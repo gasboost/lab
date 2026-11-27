@@ -1,3 +1,4 @@
+import { Link, type To } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import {
   Card,
@@ -6,7 +7,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { Link, type To } from "react-router-dom";
 import { routes } from "../../shared/routes";
 
 type ForbiddenPageProps = {

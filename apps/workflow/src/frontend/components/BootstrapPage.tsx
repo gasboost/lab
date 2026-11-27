@@ -1,3 +1,8 @@
+import { BOOTSTRAP_ERROR_CODES } from "@gasboost/bootstrap/errors";
+import { useBootstrap } from "@gasboost/bootstrap/react";
+import { AppsScriptRpcError } from "@gasboost/client";
+import { useMutation } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
 import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
 import { Button } from "@/components/ui/button";
 import {
@@ -8,11 +13,6 @@ import {
   CardHeader,
   CardTitle,
 } from "@/components/ui/card";
-import { useBootstrap } from "@gasboost/bootstrap/react";
-import { BOOTSTRAP_ERROR_CODES } from "@gasboost/bootstrap/errors";
-import { AppsScriptRpcError } from "@gasboost/client";
-import { useMutation } from "@tanstack/react-query";
-import { useSearchParams } from "react-router-dom";
 import { client } from "../lib/auth-rpc";
 
 function getBootstrapErrorMessage(error: unknown): string {

@@ -1,6 +1,5 @@
 import { SheetDB } from "@gasboost/sheetorm";
-import { sheetTables, sheetGateway } from "./sheets";
-
+import { sheetGateway, sheetTables } from "./sheets";
 
 export const db = new SheetDB({
   tables: sheetTables,

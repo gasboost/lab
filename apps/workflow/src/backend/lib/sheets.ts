@@ -1,8 +1,10 @@
 import { SheetGateway, SheetTable } from "@gasboost/sheetorm";
-import { authTables, authorizationTables } from "../../shared/tables";
+import { authorizationTables, authTables } from "../../shared/tables";
 
 function resolveSpreadsheetId(): string {
-  const configured = PropertiesService.getScriptProperties().getProperty("GASBOOST_SPREADSHEET_ID");
+  const configured = PropertiesService.getScriptProperties().getProperty(
+    "GASBOOST_SPREADSHEET_ID",
+  );
   const id = configured || SpreadsheetApp.getActive()?.getId();
   if (!id) throw new Error("Set GASBOOST_SPREADSHEET_ID in Script Properties.");
   return id;
@@ -15,4 +17,6 @@ export const sheetTables = [
   new SheetTable({ ...authorizationTables.role, dbId: spreadsheetId }),
   new SheetTable({ ...authorizationTables.permission, dbId: spreadsheetId }),
 ] as const;
+
+// biome-ignore lint/style/noNonNullAssertion: Sheets API is enabled in appsscript.json.
 export const sheetGateway = new SheetGateway(Sheets!);

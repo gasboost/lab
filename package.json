@@ -4,5 +4,15 @@
   "packageManager": "pnpm@10.18.0",
   "engines": {
     "node": ">=24"
+  },
+  "devDependencies": {
+    "@biomejs/biome": "2.6.9"
+  },
+  "scripts": {
+    "check": "biome check .",
+    "check:fix": "biome check --write .",
+    "typecheck": "pnpm -r typecheck",
+    "test": "pnpm -r test",
+    "build": "pnpm -r build"
   }
 }

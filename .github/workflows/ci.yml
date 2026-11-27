@@ -1,0 +1,107 @@
+name: CI/CD
+
+on:
+  pull_request:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 24
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm format
+      - run: pnpm lint
+      - run: pnpm typecheck
+      - run: pnpm test
+      - run: pnpm build
+
+      - uses: actions/upload-artifact@v4
+        if: github.ref == 'refs/heads/main'
+        with:
+          name: workflow-dist
+          path: apps/workflow/dist/
+          if-no-files-found: error
+
+  deploy:
+    name: Deploy Workflow
+    needs: ci
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-latest
+    environment: demo
+
+    concurrency:
+      group: deploy-workflow
+      cancel-in-progress: false
+
+    defaults:
+      run:
+        working-directory: apps/workflow
+
+    env:
+      GAS_SCRIPT_ID: ${{ vars.GAS_SCRIPT_ID }}
+      GAS_DEPLOYMENT_ID: ${{ vars.GAS_DEPLOYMENT_ID }}
+
+    steps:
+      - uses: actions/checkout@v5
+
+      - uses: pnpm/action-setup@v4
+
+      - uses: actions/setup-node@v5
+        with:
+          node-version: 20
+          cache: pnpm
+
+      - run: pnpm install --frozen-lockfile
+
+      - uses: actions/download-artifact@v4
+        with:
+          name: workflow-dist
+          path: apps/workflow/dist
+
+      - name: Configure clasp
+        env:
+          CLASP_CREDENTIALS: ${{ secrets.CLASP_CREDENTIALS }}
+        run: |
+          test -n "$CLASP_CREDENTIALS"
+          test -n "$GAS_SCRIPT_ID"
+          test -n "$GAS_DEPLOYMENT_ID"
+
+          printf '%s' "$CLASP_CREDENTIALS" > "$HOME/.clasprc.json"
+          chmod 600 "$HOME/.clasprc.json"
+
+          node -e 'require("node:fs").writeFileSync(".clasp.json", JSON.stringify({ scriptId: process.env.GAS_SCRIPT_ID, rootDir: "dist" }))'
+
+      - name: Verify latest main
+        run: |
+          test "$GITHUB_SHA" = "$(git ls-remote origin refs/heads/main | cut -f1)"
+
+      - name: Push source
+        run: pnpm exec clasp push --force
+
+      - name: Deploy
+        run: |
+          DESCRIPTION="GitHub Actions $GITHUB_SHA"
+
+          VERSION_OUTPUT="$(pnpm exec clasp create-version "$DESCRIPTION" --json)"
+
+          VERSION_NUMBER="$(printf '%s' "$VERSION_OUTPUT" | node -e 'const v = JSON.parse(require("node:fs").readFileSync(0, "utf8")).versionNumber; if (!Number.isInteger(v) || v < 1) process.exit(1); console.log(v)')"
+
+          pnpm exec clasp update-deployment "$GAS_DEPLOYMENT_ID" \
+            --versionNumber "$VERSION_NUMBER" \
+            --description "$DESCRIPTION"

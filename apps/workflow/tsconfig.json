@@ -1,34 +1,19 @@
 {
   "compilerOptions": {
     "target": "ES2022",
-    "lib": [
-      "ES2022",
-      "DOM",
-      "DOM.Iterable"
-    ],
+    "lib": ["ES2022", "DOM", "DOM.Iterable"],
     "module": "ESNext",
     "moduleResolution": "Bundler",
     "jsx": "react-jsx",
     "strict": true,
     "noEmit": true,
     "skipLibCheck": true,
-    "types": [
-      "google-apps-script",
-      "vite/client",
-      "node"
-    ],
+    "types": ["google-apps-script", "vite/client", "node"],
     "resolveJsonModule": true,
     "esModuleInterop": true,
     "paths": {
-      "@/*": [
-        "./src/frontend/*"
-      ]
+      "@/*": ["./src/frontend/*"]
     }
   },
-  "include": [
-    "src",
-    "tests",
-    "dev",
-    "*.config.ts"
-  ]
+  "include": ["src", "tests", "dev", "*.config.ts"]
 }
