@@ -1,0 +1,147 @@
+import { Alert, AlertDescription, AlertTitle } from "@/components/ui/alert";
+import { Button } from "@/components/ui/button";
+import {
+  Card,
+  CardContent,
+  CardDescription,
+  CardFooter,
+  CardHeader,
+  CardTitle,
+} from "@/components/ui/card";
+import { useBootstrap } from "@gasboost/bootstrap/react";
+import { BOOTSTRAP_ERROR_CODES } from "@gasboost/bootstrap/errors";
+import { AppsScriptRpcError } from "@gasboost/client";
+import { useMutation } from "@tanstack/react-query";
+import { useSearchParams } from "react-router-dom";
+import { client } from "../lib/auth-rpc";
+
+function getBootstrapErrorMessage(error: unknown): string {
+  if (error instanceof AppsScriptRpcError) {
+    switch (error.code) {
+      case BOOTSTRAP_ERROR_CODES.INVALID_TOKEN:
+        return "初期設定リンクが無効です。最新のメールをご確認ください。";
+
+      case BOOTSTRAP_ERROR_CODES.TOKEN_EXPIRED:
+        return "初期設定リンクの有効期限が切れています。新しいリンクを取得してください。";
+
+      case BOOTSTRAP_ERROR_CODES.ALREADY_INITIALIZED:
+        return "アプリケーションはすでに初期化されています。";
+
+      case BOOTSTRAP_ERROR_CODES.IN_PROGRESS:
+        return "別の初期化処理が実行中です。時間をおいて再試行してください。";
+
+      case BOOTSTRAP_ERROR_CODES.LOCKED:
+        return "試行回数の上限に達しました。リンクの有効期限が切れてから再発行してください。";
+
+      case BOOTSTRAP_ERROR_CODES.LINK_NOT_READY:
+        return "初期設定リンクの送信が完了していません。時間をおいて、トークンなしのアプリURLから再試行してください。";
+
+      default:
+        return "初期設定に失敗しました。もう一度お試しください。";
+    }
+  }
+
+  return "初期設定中に予期しないエラーが発生しました。";
+}
+
+type BootstrapPageProps = {
+  onInitialized?: () => void;
+};
+
+export function BootstrapPage({ onInitialized }: BootstrapPageProps) {
+  const { initialized, setInitialized } = useBootstrap();
+  const [params] = useSearchParams();
+  const token = params.get("token");
+
+  const initialize = useMutation({
+    mutationKey: ["bootstrap", "initialize"],
+    retry: false,
+    mutationFn: async (token: string) => {
+      const result = await client.initializeApp({ token });
+      if (result.initialized !== true) {
+        throw new Error("Bootstrap returned an incomplete result");
+      }
+      return result;
+    },
+    onSuccess: (result) => {
+      if (result.initialized !== true) return;
+      setInitialized(true);
+      onInitialized?.();
+    },
+  });
+
+  if (initialized || initialize.isSuccess) {
+    return (
+      <Card className="w-full max-w-md">
+        <CardHeader>
+          <CardTitle>初期設定が完了しています</CardTitle>
+          <CardDescription>
+            アプリケーションは利用可能な状態です。
+          </CardDescription>
+        </CardHeader>
+
+        <CardContent>
+          <Alert>
+            <AlertTitle>初期化完了</AlertTitle>
+            <AlertDescription>
+              データベースの初期化と初期管理者の登録が完了しています。
+            </AlertDescription>
+          </Alert>
+        </CardContent>
+      </Card>
+    );
+  }
+
+  return (
+    <Card className="w-full max-w-md">
+      <CardHeader>
+        <CardTitle>アプリケーションの初期設定</CardTitle>
+        <CardDescription>
+          初期管理者の登録とデータベースの初期化を行います。
+        </CardDescription>
+      </CardHeader>
+
+      <CardContent className="space-y-4">
+        {token ? (
+          <p className="text-sm text-muted-foreground">
+            初期設定リンクを確認しました。
+            以下のボタンから初期設定を開始してください。
+          </p>
+        ) : (
+          <Alert>
+            <AlertTitle>メールをご確認ください</AlertTitle>
+            <AlertDescription>
+              デプロイ実行者に初期設定リンクを送信しています。
+              メールに記載されたリンクからアクセスしてください。
+            </AlertDescription>
+          </Alert>
+        )}
+
+        {initialize.isError && (
+          <Alert variant="destructive">
+            <AlertTitle>初期設定に失敗しました</AlertTitle>
+            <AlertDescription>
+              {getBootstrapErrorMessage(initialize.error)}
+            </AlertDescription>
+          </Alert>
+        )}
+      </CardContent>
+
+      {token && (
+        <CardFooter>
+          <Button
+            className="w-full"
+            disabled={initialize.isPending}
+            onClick={() => initialize.mutate(token)}
+          >
+            {initialize.isPending
+              ? "初期設定中..."
+              : initialize.isError
+                ? "再試行"
+                : "初期設定を開始"}
+          </Button>
+        </CardFooter>
+      )}
+    </Card>
+  );
+}
