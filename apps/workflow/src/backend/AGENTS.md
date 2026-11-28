@@ -49,8 +49,9 @@
 
 ## DI・認証認可・RLS
 
-- UseCaseやRepositoryをDIコンテナで生成する場合は、Awilixの **`asFunction`** でファクトリを登録する。ビルド時のminifyを考慮し、`asClass` は使用しない。
-- 生成済みのインスタンスをそのままコンテナに登録する場合は **`asValue` を使用してよい**。依存は必要になった機能の実装時に追加する。既存登録の変更は担当Issueの範囲に従う。
+- Backendの依存関係は `lib/di.ts` で組み立て、Awilixの `container` をexportする。エントリーポイントはRPCとMiddlewareの登録を担当する。
+- Awilixは `InjectionMode.PROXY` を使い、UseCaseやRepositoryは `asFunction` のファクトリで操作・依存関係ごとに登録する。Viteのminifyでコンストラクタの引数名が変わるため `asClass` は使わない。既存のAuthやSheetDBなど、生成済みのインスタンスは `asValue` で登録できる。
+- 認証後に `diMiddleware` でコンテナを `context.state` へ登録する。各業務RPCは `context.state.get("container").resolve(...)` で対応するUseCaseを取得し、その `execute` を呼び出す。
 - APIの操作権限は `@gasboost/app` で扱う **RPC固有の認可Middleware** で表現する。既存 `@gasboost/auth-app` の認可Middleware / 公開APIに整合させ、独自の認可基盤を作らない。
 - レコード単位の認可が必要な機能では **`@gasboost/rls`** を使用する。RLS定義はBackendに置き、実際にSheetORMへ適用する。Frontend用sharedへ移さない。必要な導入・定義は対象機能のIssueで行う。
 - Presentationの操作権限とDBのRLSは責務が異なる。片方で片方を代替しない。

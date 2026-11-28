@@ -7,23 +7,16 @@ import {
   SecurityPolicy,
 } from "@gasboost/fake-core";
 import { afterEach, beforeEach, describe, expect, it, vi } from "vitest";
-import {
-  CreateOffice,
-  ListOffices,
-  RenameOffice,
-  RetireOffice,
-} from "../../src/backend/application/offices";
 import { Office } from "../../src/backend/domain/Office";
 import { officeTable } from "../../src/backend/infrastructure/officeTable";
 import { SheetOfficeRepository } from "../../src/backend/infrastructure/SheetOfficeRepository";
 import { auth, authorization } from "../../src/backend/lib/auth";
 import { db } from "../../src/backend/lib/db";
-import { officeSheet, sheetGateway } from "../../src/backend/lib/sheets";
+import { container } from "../../src/backend/lib/di";
+import { sheetGateway, spreadsheetId } from "../../src/backend/lib/sheets";
 import app from "../../src/backend/main";
 
-const transaction = db.transaction.bind(db);
 const sessions: string[] = [];
-const migrationKey = `WORKFLOW_OFFICES_SCHEMA_V1:${officeSheet.dbId}`;
 
 beforeEach(() => {
   const ids = db
@@ -37,7 +30,6 @@ afterEach(async () => {
   await Promise.all(sessions.splice(0).map((id) => auth.signOut.execute(id)));
   const properties = PropertiesService.getScriptProperties();
   properties.deleteProperty("APP_STATE");
-  properties.deleteProperty(migrationKey);
 });
 
 describe("Office", () => {
@@ -65,7 +57,7 @@ describe("Office", () => {
 });
 
 describe("Office persistence and use cases", () => {
-  const offices = new SheetOfficeRepository(db);
+  const offices = container.resolve("officeRepository");
 
   it("persists and restores the aggregate through a fresh repository", () => {
     const office = new Office(Utilities.getUuid(), "支店", "retired");
@@ -83,7 +75,7 @@ describe("Office persistence and use cases", () => {
   });
 
   it("creates offices with distinct IDs and no fixed set of names", () => {
-    const create = new CreateOffice(offices, () => Utilities.getUuid());
+    const create = container.resolve("createOffice");
     const created = ["本社", "東営業所", "西営業所", "南営業所"].map(
       (name) => ({
         ...create.execute({ name }),
@@ -93,7 +85,7 @@ describe("Office persistence and use cases", () => {
     );
 
     expect(new Set(created.map(({ id }) => id)).size).toBe(4);
-    expect(new ListOffices(offices).execute()).toEqual(created);
+    expect(container.resolve("listOffices").execute()).toEqual(created);
   });
 
   it("renames a retired office without restoring it", () => {
@@ -101,7 +93,7 @@ describe("Office persistence and use cases", () => {
     offices.save(new Office(id, "営業所", "retired"));
 
     expect(
-      new RenameOffice(offices, transaction).execute({
+      container.resolve("renameOffice").execute({
         id,
         name: "旧営業所",
       }),
@@ -116,11 +108,11 @@ describe("Office persistence and use cases", () => {
   it("retires an office and keeps the same record on a retry", () => {
     const id = Utilities.getUuid();
     offices.save(new Office(id, "営業所"));
-    const retire = new RetireOffice(offices, transaction);
+    const retire = container.resolve("retireOffice");
 
     expect(retire.execute({ id })).toBe(true);
     expect(retire.execute({ id })).toBe(true);
-    expect(new ListOffices(offices).execute()).toEqual([
+    expect(container.resolve("listOffices").execute()).toEqual([
       { id, name: "営業所", status: "retired" },
     ]);
     expect(retire.execute({ id: Utilities.getUuid() })).toBe(false);
@@ -226,9 +218,7 @@ describe("Office RPC", () => {
       await expect(app.dispatch(rpc, input, metadata)).rejects.toThrow(
         AUTH_ERROR_CODES.FORBIDDEN,
       );
-      expect(new ListOffices(new SheetOfficeRepository(db)).execute()).toEqual(
-        [],
-      );
+      expect(container.resolve("listOffices").execute()).toEqual([]);
     },
   );
 
@@ -264,22 +254,20 @@ describe("Office RPC", () => {
     ).rejects.toThrow("OFFICE_NOT_FOUND");
   });
 
-  it("migrates only the office sheet once, after authorizing access", async () => {
+  it("creates the office sheet during Bootstrap without migrating on office calls", async () => {
     const setColumns = vi.spyOn(sheetGateway, "setColumns");
     try {
-      await expect(app.dispatch("listOffices")).rejects.toThrow(
-        AUTH_ERROR_CODES.UNAUTHORIZED,
-      );
-      expect(setColumns).not.toHaveBeenCalled();
+      const { metadata } = await signIn("bootstrap");
+      expect(setColumns).toHaveBeenCalledWith(spreadsheetId, officeTable.name, [
+        "id",
+        "name",
+        "status",
+      ]);
+      setColumns.mockClear();
 
-      const { metadata } = await signIn("総務担当者");
       await app.dispatch("listOffices", undefined, metadata);
-      await app.dispatch("listOffices", undefined, metadata);
-      expect(setColumns).toHaveBeenCalledExactlyOnceWith(
-        officeSheet.dbId,
-        officeTable.name,
-        ["id", "name", "status"],
-      );
+      await app.dispatch("createOffice", { name: "本社" }, metadata);
+      expect(setColumns).not.toHaveBeenCalled();
     } finally {
       setColumns.mockRestore();
     }

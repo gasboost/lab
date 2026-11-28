@@ -11,17 +11,13 @@ function resolveSpreadsheetId(): string {
   return id;
 }
 export const spreadsheetId = resolveSpreadsheetId();
-export const officeSheet = new SheetTable({
-  ...officeTable,
-  dbId: spreadsheetId,
-});
 export const sheetTables = [
   new SheetTable({ ...authTables.user, dbId: spreadsheetId }),
   new SheetTable({ ...authTables.account, dbId: spreadsheetId }),
   new SheetTable({ ...authTables.passwordReset, dbId: spreadsheetId }),
   new SheetTable({ ...authorizationTables.role, dbId: spreadsheetId }),
   new SheetTable({ ...authorizationTables.permission, dbId: spreadsheetId }),
-  officeSheet,
+  new SheetTable({ ...officeTable, dbId: spreadsheetId }),
 ] as const;
 
 // biome-ignore lint/style/noNonNullAssertion: Sheets API is enabled in appsscript.json.
