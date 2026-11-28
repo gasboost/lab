@@ -1,5 +1,6 @@
 import { SheetGateway, SheetTable } from "@gasboost/sheetorm";
 import { authorizationTables, authTables } from "../../shared/tables";
+import { officeTable } from "../infrastructure/officeTable";
 
 function resolveSpreadsheetId(): string {
   const configured = PropertiesService.getScriptProperties().getProperty(
@@ -16,6 +17,7 @@ export const sheetTables = [
   new SheetTable({ ...authTables.passwordReset, dbId: spreadsheetId }),
   new SheetTable({ ...authorizationTables.role, dbId: spreadsheetId }),
   new SheetTable({ ...authorizationTables.permission, dbId: spreadsheetId }),
+  new SheetTable({ ...officeTable, dbId: spreadsheetId }),
 ] as const;
 
 // biome-ignore lint/style/noNonNullAssertion: Sheets API is enabled in appsscript.json.
