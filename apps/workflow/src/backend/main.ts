@@ -24,9 +24,13 @@ const officeAuthorization = authorization(
 
 const app = new AppsScript()
   .get((request) => {
-    const template = HtmlService.createTemplateFromFile("index");
-    template.__BOOTSTRAP__ = templateValue(bootstrap.handle(request));
-    return template.evaluate().setTitle("GAS BOOST");
+    // GAS template evaluation can normalize U+0085 in the bundled script.
+    const html = HtmlService.createHtmlOutputFromFile("index").getContent();
+    return HtmlService.createHtmlOutput(
+      html.replace("<?!= __BOOTSTRAP__ ?>", () =>
+        templateValue(bootstrap.handle(request)),
+      ),
+    ).setTitle("GAS BOOST");
   })
   .calls(bootstrap.handlers())
   .use(authErrorHandler())
