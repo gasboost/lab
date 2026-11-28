@@ -6,6 +6,7 @@ import tailwind from "@tailwindcss/vite";
 import react from "@vitejs/plugin-react";
 import { defineConfig, type Plugin } from "vite";
 import { viteSingleFile } from "vite-plugin-singlefile";
+import { officeTable } from "./src/backend/infrastructure/officeTable";
 import { tables } from "./src/shared/tables";
 
 export default defineConfig(async ({ command }) => {
@@ -17,7 +18,9 @@ export default defineConfig(async ({ command }) => {
     localRpc: {
       override: true,
       database: {
-        local: Object.fromEntries(tables.map((table) => [table.name, []])),
+        local: Object.fromEntries(
+          [...tables, officeTable].map((table) => [table.name, []]),
+        ),
       },
     },
     runtime: {
