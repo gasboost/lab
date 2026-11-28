@@ -2,28 +2,28 @@ export type OfficeStatus = "active" | "retired";
 
 export class Office {
   readonly id: string;
-  #name: string;
-  #status: OfficeStatus;
+  private currentName: string;
+  private currentStatus: OfficeStatus;
 
   constructor(id: string, name: string, status: OfficeStatus = "active") {
     this.id = id;
-    this.#name = name;
-    this.#status = status;
+    this.currentName = name;
+    this.currentStatus = status;
   }
 
   get name() {
-    return this.#name;
+    return this.currentName;
   }
 
   get status() {
-    return this.#status;
+    return this.currentStatus;
   }
 
   rename(name: string) {
-    this.#name = name;
+    this.currentName = name;
   }
 
   retire() {
-    this.#status = "retired";
+    this.currentStatus = "retired";
   }
 }

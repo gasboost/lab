@@ -2,6 +2,10 @@
 
 `src/backend/` に適用する。[アプリ全体の規約](../../AGENTS.md) と併せて読む。Backendに対応する `tests/` の作業時にも本規約を適用する。
 
+## Apps Script V8との互換性
+
+- [Apps Script V8のクラス構文の制限](https://developers.google.com/apps-script/guides/v8-runtime#class_limitations) により、JavaScriptのプライベートフィールド（`#field`）はパースエラーになる。Backendのフィールドのアクセス制御にはTypeScriptの `private` を使い、デプロイ対象のサーバーバンドルに `#field` 構文が含まれないことを確認する。
+
 ## 4層の責務と依存方向
 
 | 層・配置                           | 責務                                                                                                          |
